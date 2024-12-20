@@ -1,0 +1,62 @@
+version: '3'
+
+services:
+  ceph-mon:
+    image: ceph/ceph:v15.2.0
+    container_name: ceph-mon
+    environment:
+      - MON_IP=127.0.0.1
+      - CEPH_PUBLIC_NETWORK=127.0.0.1/24
+    networks:
+      - ceph-net
+    volumes:
+      - ./ceph.conf:/Users/zhanjames/code/github/ceph-code/ceph.conf  # 挂载 ceph.conf
+      - ceph-mon-data:/Users/zhanjames/code/github/ceph-code/mon
+    ports:
+      - "6789:6789"
+    restart: unless-stopped
+    command: /bin/bash -c "ceph-mon --fsid $CEPH_FSID --mon-host $MON_IP && tail -f /dev/null"
+
+  ceph-osd:
+    image: ceph/ceph:v15.2.0
+    container_name: ceph-osd
+    environment:
+      - OSD_DEVICE=/dev/sdb
+      - OSD_MEMORY_TARGET=1024M
+    networks:
+      - ceph-net
+    volumes:
+      - ceph-osd-data:/Users/zhanjames/code/github/ceph-code/osd
+    restart: unless-stopped
+    command: /bin/bash -c "ceph-osd --id 0 --osd-journal /var/lib/ceph/osd/0 && tail -f /dev/null"
+
+  ceph-mgr:
+    image: ceph/ceph:v15.2.0
+    container_name: ceph-mgr
+    environment:
+      - MON_IP=127.0.0.1
+    networks:
+      - ceph-net
+    restart: unless-stopped
+    command: /bin/bash -c "ceph-mgr -i $HOSTNAME --mon-host $MON_IP && tail -f /dev/null"
+
+  ceph-dashboard:
+    image: ceph/ceph:v15.2.0
+    container_name: ceph-dashboard
+    environment:
+      - CEPH_DASHBOARD_USER=admin
+      - CEPH_DASHBOARD_PASSWORD=admin
+    networks:
+      - ceph-net
+    ports:
+      - "8443:8443"
+    restart: unless-stopped
+    command: /bin/bash -c "ceph dashboard ac-user-create admin admin  administrator && tail -f /dev/null"
+
+networks:
+  ceph-net:
+    driver: bridge
+
+volumes:
+  ceph-mon-data:
+  ceph-osd-data:
